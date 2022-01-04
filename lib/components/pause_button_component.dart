@@ -1,25 +1,22 @@
 import 'package:flame/components.dart';
 import 'package:flame/input.dart';
-import 'package:moonlander/main.dart';
+import 'package:flutter/material.dart';
 
-final _defaultSize = Vector2(50, 25);
+final _buttonSize = Vector2(50, 25);
 
-class PauseButtonComponent extends SpriteComponent
-    with Tappable, HasGameRef<MoonLanderGame> {
+class PauseButtonComponent extends HudButtonComponent {
   PauseButtonComponent({
     required Vector2 position,
+    required EdgeInsets margin,
     required Sprite sprite,
+    required VoidCallback onPressed,
+    Sprite? downSprite,
   }) : super(
-          position: position,
-          size: _defaultSize,
-          sprite: sprite,
+          button: SpriteComponent(
+              position: position, sprite: sprite, size: _buttonSize),
+          margin: margin,
+          onPressed: onPressed,
+          buttonDown: SpriteComponent(
+              position: position, sprite: downSprite, size: _buttonSize),
         );
-
-  @override
-  bool onTapDown(TapDownInfo info) {
-    gameRef.togglePaused();
-
-    return super.onTapDown(info);
-  }
 }
-
