@@ -60,9 +60,11 @@ packages:
   flame:
     dependency: "direct main"
     description:
-      name: flame
-      url: "https://pub.dartlang.org"
-    source: hosted
+      path: "packages/flame"
+      ref: HEAD
+      resolved-ref: ee7298cbe5cd02825cd7246f86ccb0c3655985a0
+      url: "git://github.com/flame-engine/flame.git"
+    source: git
     version: "1.0.0"
   flutter:
     dependency: "direct main"
