@@ -1,51 +1,15 @@
 import 'package:flame/components.dart';
 import 'package:flame/game.dart';
 import 'package:flame/geometry.dart';
+import 'package:flame/sprite.dart';
 import 'package:flutter/material.dart';
+import 'package:moonlander/components/line_component.dart';
+import 'package:moonlander/game_state.dart';
+import 'package:moonlander/main.dart';
 
-enum RocketMovement {
-  left,
-  right,
-  idle,
-}
 
-class RocketState {
-  const RocketState(this.index, this.movement, this.angle);
-
-  final int index;
-  final RocketMovement movement;
-  final double angle;
-
-  static const all = [
-    farLeft,
-    left,
-    idle,
-    right,
-    farRight,
-  ];
-
-  static const farLeft = RocketState(0, RocketMovement.left, -15);
-  static const left = RocketState(1, RocketMovement.left, -7.5);
-  static const idle = RocketState(2, RocketMovement.idle, 0);
-  static const right = RocketState(3, RocketMovement.right, 7.5);
-  static const farRight = RocketState(4, RocketMovement.right, 15);
-
-  RocketState move(RocketMovement newMovement) {
-    switch (newMovement) {
-      case RocketMovement.left:
-        return this == farLeft ? farLeft : all[index - 1];
-      case RocketMovement.idle:
-        return this == idle
-            ? idle
-            : all[index + (movement == RocketMovement.left ? 1 : -1)];
-      case RocketMovement.right:
-        return this == farRight ? farRight : all[index + 1];
-    }
-  }
-}
-
-class RocketComponent extends SpriteAnimationGroupComponent<RocketState>
-    with HasHitboxes, Collidable, HasGameRef {
+class RocketComponent extends SpriteAnimationGroupComponent<_AnimationKey>
+    with HasHitboxes, Collidable, HasGameRef<MoonLanderGame> {
   RocketComponent({
     required Vector2 position,
     required Vector2 size,
@@ -57,12 +21,13 @@ class RocketComponent extends SpriteAnimationGroupComponent<RocketState>
 
   final JoystickComponent joystick;
 
-  var _movement = RocketMovement.idle;
+  var _joystickDirection = JoystickDirection.idle;
   final _speed = 7;
   final _animationSpeed = .1;
   var _animationTime = 0.0;
   final _velocity = Vector2.zero();
   final _gravity = Vector2(0, 1);
+  var _collisionActive = false;
 
   @override
   Future<void> onLoad() async {
@@ -70,13 +35,13 @@ class RocketComponent extends SpriteAnimationGroupComponent<RocketState>
 
     animations = await _loadAnimation(gameRef);
 
-    current = RocketState.idle;
+    current = _AnimationKey.idle;
 
-    addHitbox(HitboxRectangle());
+    addHitbox(HitboxRectangle(relation: Vector2(1, 0.55)));
   }
 
   void _setAnimationState() {
-    current = current?.move(_movement);
+    current = current?.next(_joystickDirection);
     angle = radians(current?.angle ?? 0);
   }
 
@@ -84,17 +49,8 @@ class RocketComponent extends SpriteAnimationGroupComponent<RocketState>
   void update(double dt) {
     super.update(dt);
 
-    if (joystick.direction == JoystickDirection.left &&
-        _movement != RocketMovement.left) {
-      _movement = RocketMovement.left;
-      _animationTime = 0;
-    } else if (joystick.direction == JoystickDirection.right &&
-        _movement != RocketMovement.right) {
-      _movement = RocketMovement.right;
-      _animationTime = 0;
-    } else if (joystick.direction == JoystickDirection.idle &&
-        _movement != RocketMovement.idle) {
-      _movement = RocketMovement.idle;
+    if (joystick.direction != _joystickDirection) {
+      _joystickDirection = joystick.direction;
       _animationTime = 0;
     }
 
@@ -125,40 +81,155 @@ class RocketComponent extends SpriteAnimationGroupComponent<RocketState>
       ..add(_gravity.normalized() * dt)
       ..clampScalar(-10, 10);
   }
+
+  @override
+  void onCollision(Set<Vector2> intersectionPoints, Collidable other) {
+    if (_collisionActive) {
+      return;
+    }
+
+    if (other is LineComponent) {
+      _lose();
+    }
+
+    super.onCollision(intersectionPoints, other);
+  }
+
+  void _lose() {
+    _velocity.scale(0);
+    _collisionActive = true;
+
+    current = _AnimationKey.idle;
+    GameState.playState = PlayingState.lost;
+    gameRef.pause();
+  }
 }
 
-Future<Map<RocketState, SpriteAnimation>> _loadAnimation(FlameGame game) async {
+Future<Map<_AnimationKey, SpriteAnimation>> _loadAnimation(
+    FlameGame game) async {
   const stepTime = .3;
-  final textureSize = Vector2(16, 24);
   const frameCount = 2;
-  SpriteAnimationData spriteAnimationData() => SpriteAnimationData.sequenced(
-      amount: frameCount, stepTime: stepTime, textureSize: textureSize);
-  final idle = await game.loadSpriteAnimation(
-    'ship_animation_idle.png',
-    spriteAnimationData(),
-  );
-  final left = await game.loadSpriteAnimation(
-    'ship_animation_left.png',
-    spriteAnimationData(),
-  );
-  final right = await game.loadSpriteAnimation(
-    'ship_animation_right.png',
-    spriteAnimationData(),
-  );
-  final farLeft = await game.loadSpriteAnimation(
-    'ship_animation_far_left.png',
-    spriteAnimationData(),
-  );
-  final farRight = await game.loadSpriteAnimation(
-    'ship_animation_far_right.png',
-    spriteAnimationData(),
+
+  final sheet = SpriteSheet.fromColumnsAndRows(
+    image: await game.images.load('ship_spritesheet.png'),
+    columns: frameCount,
+    rows: 6,
   );
 
+  SpriteAnimation spriteAnimation(int row) => sheet.createAnimation(
+        row: row,
+        stepTime: stepTime,
+      );
+
   return {
-    RocketState.idle: idle,
-    RocketState.left: left,
-    RocketState.right: right,
-    RocketState.farLeft: farLeft,
-    RocketState.farRight: farRight
+    _AnimationKey.idle: spriteAnimation(0),
+    _AnimationKey.up: spriteAnimation(1),
+    _AnimationKey.left: spriteAnimation(2),
+    _AnimationKey.right: spriteAnimation(3),
+    _AnimationKey.farLeft: spriteAnimation(4),
+    _AnimationKey.farRight: spriteAnimation(5)
   };
+}
+
+class _AnimationKey {
+  const _AnimationKey({
+    required this.sequencePosition,
+    required this.angle,
+  });
+
+  final int sequencePosition;
+  final double angle;
+
+  static const idle = AnimationKeyIdle();
+  static const up = AnimationKeyUp();
+  static const left = AnimationKeyLeft();
+  static const farLeft = AnimationKeyFarLeft();
+  static const right = AnimationKeyRight();
+  static const farRight = AnimationKeyFarRight();
+
+  static _AnimationKey? inSequence(
+      int position, JoystickDirection newDirection) {
+    switch (position) {
+      case -2:
+        return farLeft;
+      case -1:
+        return left;
+      case 0:
+        return newDirection == JoystickDirection.idle ? idle : up;
+      case 1:
+        return right;
+      case 2:
+        return farRight;
+      default:
+        return null;
+    }
+  }
+
+  _AnimationKey next(JoystickDirection direction) {
+    switch (direction) {
+      case JoystickDirection.left:
+        return inSequence(sequencePosition - 1, direction) ?? farLeft;
+      case JoystickDirection.right:
+        return inSequence(sequencePosition + 1, direction) ?? farRight;
+      default:
+        {
+          if (sequencePosition == 0) {
+            return inSequence(0, direction) ?? up;
+          } else {
+            return inSequence(
+                    sequencePosition +
+                        (direction == JoystickDirection.left ? 1 : -1),
+                    direction) ?? up;
+          }
+        }
+    }
+  }
+}
+
+class AnimationKeyIdle extends _AnimationKey {
+  const AnimationKeyIdle()
+      : super(
+          sequencePosition: 0,
+          angle: 0,
+        );
+}
+
+class AnimationKeyUp extends _AnimationKey {
+  const AnimationKeyUp()
+      : super(
+          sequencePosition: 0,
+          angle: 0,
+        );
+}
+
+class AnimationKeyLeft extends _AnimationKey {
+  const AnimationKeyLeft()
+      : super(
+          sequencePosition: -1,
+          angle: -7.5,
+        );
+}
+
+class AnimationKeyFarLeft extends _AnimationKey {
+  const AnimationKeyFarLeft()
+      : super(
+          sequencePosition: -2,
+          angle: -15,
+        );
+}
+
+class AnimationKeyRight extends _AnimationKey {
+  const AnimationKeyRight()
+      : super(
+          sequencePosition: 1,
+          angle: 7.5,
+        );
+}
+
+class AnimationKeyFarRight extends _AnimationKey {
+  const AnimationKeyFarRight()
+      : super(
+          sequencePosition: 2,
+          angle: 15,
+        );
 }

@@ -6,7 +6,9 @@ import 'package:flutter/material.dart';
 import 'package:moonlander/components/pause_button_component.dart';
 import 'package:moonlander/widgets/pause_menu_widget.dart';
 
+import 'components/map_component.dart';
 import 'components/rocket_component.dart';
+import 'fixed_vertical_resolution_viewport.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -35,15 +37,9 @@ Future<void> main() async {
 }
 
 class MoonLanderGame extends FlameGame
-    with
-        HasCollidables,
-        HasTappables,
-        HasDraggables,
-        HasMoonLanderOverlays {
+    with HasCollidables, HasTappables, HasDraggables, HasMoonLanderOverlays {
   @override
   Future<void> onLoad() async {
-    await super.onLoad();
-
     debugMode = true;
 
     final joystickSpriteSheet = SpriteSheet.fromColumnsAndRows(
@@ -59,7 +55,11 @@ class MoonLanderGame extends FlameGame
       margin: const EdgeInsets.only(left: 40, bottom: 40),
     );
 
+    camera.viewport = FixedVerticalResolutionViewport(800);
+
     add(joystick);
+    
+    add(MapComponent());
 
     add(RocketComponent(
       position: size / 2,
@@ -74,6 +74,8 @@ class MoonLanderGame extends FlameGame
       downSprite: await Sprite.load('PauseButtonInvert.png'),
       onPressed: togglePaused,
     ));
+
+    return super.onLoad();
   }
 }
 
