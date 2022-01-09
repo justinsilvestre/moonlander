@@ -12,6 +12,7 @@ class TerrainGenerator {
     this.stepChange = 1.0,
     required this.size,
     this.seed,
+    required this.landingSpotsCount,
   });
 
   /// Determines the max step.
@@ -26,6 +27,8 @@ class TerrainGenerator {
   /// Seed used for the [Random]ness.
   final int? seed;
 
+  final int landingSpotsCount;
+
   /// Generate list of points that represent the terrain.
   List<Vector2> generate() {
     final random = Random(seed);
@@ -36,7 +39,19 @@ class TerrainGenerator {
     var slope = (random.nextDouble() * maxStep) * 2 - maxStep;
 
     final points = <Vector2>[];
+
+    final landingSpots = <int>[];
+    while (landingSpots.length < landingSpotsCount) {
+      final index = random.nextInt(size.x.toInt());
+      if (!landingSpots.contains(index)) landingSpots.add(index);
+    }
+
     for (var x = 0.0; x <= size.x; x++) {
+      if (landingSpots.contains(x)) {
+        points.add(Vector2(x, height));
+        continue;
+      }
+
       // Update the height by adding the previous slope.
       height += slope;
 

@@ -7,7 +7,6 @@ import 'package:moonlander/components/line_component.dart';
 import 'package:moonlander/game_state.dart';
 import 'package:moonlander/main.dart';
 
-
 class RocketComponent extends SpriteAnimationGroupComponent<_AnimationKey>
     with HasHitboxes, Collidable, HasGameRef<MoonLanderGame> {
   RocketComponent({
@@ -20,6 +19,7 @@ class RocketComponent extends SpriteAnimationGroupComponent<_AnimationKey>
         );
 
   final JoystickComponent joystick;
+  double fuel = 100;
 
   var _joystickDirection = JoystickDirection.idle;
   final _speed = 7;
@@ -28,6 +28,10 @@ class RocketComponent extends SpriteAnimationGroupComponent<_AnimationKey>
   final _velocity = Vector2.zero();
   final _gravity = Vector2(0, 1);
   var _collisionActive = false;
+
+  Vector2 actualSpeed() {
+    return _velocity.scaled(_speed.toDouble());
+  }
 
   @override
   Future<void> onLoad() async {
@@ -179,7 +183,8 @@ class _AnimationKey {
             return inSequence(
                     sequencePosition +
                         (direction == JoystickDirection.left ? 1 : -1),
-                    direction) ?? up;
+                    direction) ??
+                up;
           }
         }
     }

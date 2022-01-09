@@ -6,6 +6,12 @@ import '../terrain_generator.dart';
 import 'line_component.dart';
 
 class MapComponent extends Component with HasGameRef<MoonLanderGame> {
+  MapComponent({
+    this.widthInGridUnits = 100,
+  });
+
+  final int widthInGridUnits;
+
   /// The workable grid sizes.
   static final grid = Vector2(40, 30);
 
@@ -15,11 +21,19 @@ class MapComponent extends Component with HasGameRef<MoonLanderGame> {
 
     final points = TerrainGenerator(
       size: Vector2(grid.x, grid.y / 3),
+      landingSpotsCount: 10,
     ).generate();
 
     for (var i = 1; i < points.length; i++) {
       await add(LineComponent(points[i - 1], points[i]));
     }
+
+    final gridUnitSize = gameRef.size.clone()..divide(MapComponent.grid);
+
+    gameRef.setCameraWorldBounds(
+      widthInGridUnits * gridUnitSize.x,
+      grid.y * gridUnitSize.y,
+    );
   }
 
   @override

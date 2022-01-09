@@ -8,6 +8,7 @@ import 'package:moonlander/widgets/pause_menu_widget.dart';
 
 import 'components/map_component.dart';
 import 'components/rocket_component.dart';
+import 'components/rocket_info_component.dart';
 import 'fixed_vertical_resolution_viewport.dart';
 
 Future<void> main() async {
@@ -55,17 +56,22 @@ class MoonLanderGame extends FlameGame
       margin: const EdgeInsets.only(left: 40, bottom: 40),
     );
 
-    camera.viewport = FixedVerticalResolutionViewport(800);
-
-    add(joystick);
-    
-    add(MapComponent());
-
-    add(RocketComponent(
+    final rocket = RocketComponent(
       position: size / 2,
       size: Vector2(32, 48),
       joystick: joystick,
-    ));
+    );
+
+    camera.viewport = FixedVerticalResolutionViewport(800);
+
+    add(joystick);
+
+    add(MapComponent());
+
+    add(rocket);
+
+
+    camera.followComponent(rocket);
 
     add(PauseButtonComponent(
       position: Vector2.zero(),
@@ -75,7 +81,13 @@ class MoonLanderGame extends FlameGame
       onPressed: togglePaused,
     ));
 
+    add(RocketInfo(rocket));
+
     return super.onLoad();
+  }
+
+  void setCameraWorldBounds(double width, double height) {
+    camera.worldBounds = Rect.fromLTWH(0, 0, width, height);
   }
 }
 
