@@ -6,10 +6,12 @@ import 'package:flutter/material.dart';
 import 'package:moonlander/components/pause_button_component.dart';
 import 'package:moonlander/widgets/pause_menu_widget.dart';
 
+import 'audio_player.dart';
 import 'components/map_component.dart';
 import 'components/rocket_component.dart';
 import 'components/rocket_info_component.dart';
 import 'fixed_vertical_resolution_viewport.dart';
+import 'game_state.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -39,6 +41,8 @@ Future<void> main() async {
 
 class MoonLanderGame extends FlameGame
     with HasCollidables, HasTappables, HasDraggables, HasMoonLanderOverlays {
+  late final MoonLanderAudioPlayer audioPlayer;
+
   @override
   Future<void> onLoad() async {
     debugMode = true;
@@ -64,12 +68,14 @@ class MoonLanderGame extends FlameGame
 
     camera.viewport = FixedVerticalResolutionViewport(800);
 
+    audioPlayer = MoonLanderAudioPlayer();
+    await audioPlayer.loadAssets();
+
     add(joystick);
 
     add(MapComponent());
 
     add(rocket);
-
 
     camera.followComponent(rocket);
 
@@ -88,6 +94,11 @@ class MoonLanderGame extends FlameGame
 
   void setCameraWorldBounds(double width, double height) {
     camera.worldBounds = Rect.fromLTWH(0, 0, width, height);
+  }
+
+  void lose() {
+    GameState.playState = PlayingState.lost;
+    pause();
   }
 }
 

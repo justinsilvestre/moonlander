@@ -4,8 +4,11 @@ import 'package:flame/geometry.dart';
 import 'package:flame/sprite.dart';
 import 'package:flutter/material.dart';
 import 'package:moonlander/components/line_component.dart';
-import 'package:moonlander/game_state.dart';
 import 'package:moonlander/main.dart';
+import 'package:moonlander/particle_generator.dart';
+
+import 'explosion_component.dart';
+import 'map_component.dart';
 
 class RocketComponent extends SpriteAnimationGroupComponent<_AnimationKey>
     with HasHitboxes, Collidable, HasGameRef<MoonLanderGame> {
@@ -20,6 +23,7 @@ class RocketComponent extends SpriteAnimationGroupComponent<_AnimationKey>
 
   final JoystickComponent joystick;
   double fuel = 100;
+  late final Vector2 _particleOffset;
 
   var _joystickDirection = JoystickDirection.idle;
   final _speed = 7;
@@ -28,6 +32,10 @@ class RocketComponent extends SpriteAnimationGroupComponent<_AnimationKey>
   final _velocity = Vector2.zero();
   final _gravity = Vector2(0, 1);
   var _collisionActive = false;
+  final _engineSoundCoolDown = 0.2;
+  var _engineSoundCounter = 0.2;
+  
+  final _fuelUsageBySecond = 10;
 
   Vector2 actualSpeed() {
     return _velocity.scaled(_speed.toDouble());
@@ -42,6 +50,8 @@ class RocketComponent extends SpriteAnimationGroupComponent<_AnimationKey>
     current = _AnimationKey.idle;
 
     addHitbox(HitboxRectangle(relation: Vector2(1, 0.55)));
+
+    _particleOffset = Vector2(size.x * 0.4, size.y * 0.8);
   }
 
   void _setAnimationState() {
@@ -77,13 +87,38 @@ class RocketComponent extends SpriteAnimationGroupComponent<_AnimationKey>
   }
 
   void _updateVelocity(double dt) {
+//Get the direction of the vector2 and scale it with the speed and framerate
     if (!joystick.delta.isZero()) {
-      _velocity.add(joystick.delta.normalized() * _speed.toDouble() * dt);
+      final joyStickDelta = joystick.delta.clone();
+      joyStickDelta.y = joyStickDelta.y.clamp(-1 * double.infinity, 0);
+      _velocity.add(joyStickDelta.normalized() * (_speed * dt));
+      fuel -= _fuelUsageBySecond * dt;
+      if (fuel < 0) {
+        _lose();
+      } else {
+        _createEngineParticles();
+        if (_engineSoundCounter >= _engineSoundCoolDown) {
+          gameRef.audioPlayer.playEngine();
+          _engineSoundCounter = 0;
+        } else {
+          _engineSoundCounter += dt;
+        }
+      }
     }
+    //Max speed is equal to two grid cells
+    final maxSpeed = gameRef.size.clone()
+      ..divide(MapComponent.grid)
+      ..scale(2)
+      ..divide(Vector2.all(_speed.toDouble()));
+
+    final gravityChange = _gravity.normalized() * (dt * 0.8);
 
     _velocity
-      ..add(_gravity.normalized() * dt)
-      ..clampScalar(-10, 10);
+      ..add(gravityChange)
+      ..clamp(
+        maxSpeed.scaled(-1),
+        maxSpeed,
+      );
   }
 
   @override
@@ -104,8 +139,20 @@ class RocketComponent extends SpriteAnimationGroupComponent<_AnimationKey>
     _collisionActive = true;
 
     current = _AnimationKey.idle;
-    GameState.playState = PlayingState.lost;
-    gameRef.pause();
+
+    gameRef.add(ExplosionComponent(
+      position.clone()
+        ..add(
+          Vector2(size.x / 2, 0),
+        ),
+      angle: -angle,
+    ));
+  }
+
+  void _createEngineParticles() {
+    gameRef.add(ParticleGenerator.createEngineParticle(
+      position: position.clone()..add(_particleOffset),
+    ));
   }
 }
 

@@ -20,4 +20,6 @@ class GameState {
 
   /// Show or hide debug information of flame.
   static bool showDebugInfo = true;
+
+  static bool playSounds = true;
 }
