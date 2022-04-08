@@ -1,6 +1,6 @@
+import 'package:flame/collisions.dart';
 import 'package:flame/components.dart';
 import 'package:flame/game.dart';
-import 'package:flame/geometry.dart';
 import 'package:flame/sprite.dart';
 import 'package:flutter/material.dart';
 import 'package:moonlander/components/line_component.dart';
@@ -11,7 +11,7 @@ import 'explosion_component.dart';
 import 'map_component.dart';
 
 class RocketComponent extends SpriteAnimationGroupComponent<_AnimationKey>
-    with HasHitboxes, Collidable, HasGameRef<MoonLanderGame> {
+    with CollisionCallbacks, HasGameRef<MoonLanderGame> {
   RocketComponent({
     required Vector2 position,
     required Vector2 size,
@@ -49,7 +49,7 @@ class RocketComponent extends SpriteAnimationGroupComponent<_AnimationKey>
 
     current = _AnimationKey.idle;
 
-    addHitbox(HitboxRectangle(relation: Vector2(1, 0.55)));
+    add(RectangleHitbox());
 
     _particleOffset = Vector2(size.x * 0.4, size.y * 0.8);
   }
@@ -121,8 +121,9 @@ class RocketComponent extends SpriteAnimationGroupComponent<_AnimationKey>
       );
   }
 
+
   @override
-  void onCollision(Set<Vector2> intersectionPoints, Collidable other) {
+  void onCollision(Set<Vector2> intersectionPoints, PositionComponent other) {
     if (_collisionActive) {
       return;
     }

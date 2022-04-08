@@ -40,7 +40,7 @@ Future<void> main() async {
 }
 
 class MoonLanderGame extends FlameGame
-    with HasCollidables, HasTappables, HasDraggables, HasMoonLanderOverlays {
+    with HasCollisionDetection, HasTappables, HasDraggables, HasMoonLanderOverlays {
   late final MoonLanderAudioPlayer audioPlayer;
 
   @override

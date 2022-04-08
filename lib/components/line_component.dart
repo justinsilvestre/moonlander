@@ -1,5 +1,6 @@
 import 'dart:math';
 
+import 'package:flame/collisions.dart';
 import 'package:flame/components.dart';
 import 'package:flame/geometry.dart';
 import 'package:flutter/material.dart';
@@ -19,7 +20,7 @@ Vector2 _convertVector(Vector2 gameSize, Vector2 point) {
 }
 
 class LineComponent extends PositionComponent
-    with HasHitboxes, Collidable, HasGameRef<MoonLanderGame> {
+    with CollisionCallbacks, HasGameRef<MoonLanderGame> {
   LineComponent(this.startPos, this.endPos, {this.isGoal = false});
 
   final bool isGoal;
@@ -30,9 +31,8 @@ class LineComponent extends PositionComponent
   Future<void> onLoad() async {
     await super.onLoad();
 
-    collidableType = CollidableType.passive;
 
-    addHitbox(HitboxRectangle());
+    add(RectangleHitbox());
   }
 
   @override
